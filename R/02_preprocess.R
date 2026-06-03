@@ -17,18 +17,22 @@ survival_df <- clinical_raw |>
   # BCR Biotab uses character columns; convert key fields
   mutate(
     bcr_patient_barcode = toupper(bcr_patient_barcode),
-    OS.time = suppressWarnings(as.numeric(days_to_death)),
-    # For censored patients, use days_to_last_followup
+    OS.time = suppressWarnings(as.numeric(death_days_to)),
+    # For censored patients, use last_contact_days_to
     OS.time = ifelse(is.na(OS.time),
-                     suppressWarnings(as.numeric(days_to_last_followup)),
+                     suppressWarnings(as.numeric(last_contact_days_to)),
                      OS.time),
-    OS = ifelse(!is.na(suppressWarnings(as.numeric(days_to_death))), 1L, 0L)
+    OS = ifelse(!is.na(suppressWarnings(as.numeric(death_days_to))), 1L, 0L)
   ) |>
   filter(!is.na(OS.time), OS.time > 0) |>
-  select(bcr_patient_barcode, OS.time, OS,
-         age_at_initial_pathologic_diagnosis,
+  dplyr::select(bcr_patient_barcode, OS.time, OS,
+         age_at_diagnosis,
          ajcc_pathologic_tumor_stage,
-         histological_type)
+         histological_type,
+         er_status_by_ihc,
+         pr_status_by_ihc,
+         her2_fish_status,
+         her2_status_by_ihc)
 
 message("Survival data: ", nrow(survival_df), " patients after filtering")
 message("Events (deaths): ", sum(survival_df$OS), " (",

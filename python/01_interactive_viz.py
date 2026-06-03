@@ -75,16 +75,22 @@ print(f"Saved: {volcano_path}")
 df_surv = survival_rds.copy()
 df_surv["OS.time_months"] = pd.to_numeric(df_surv["OS.time"], errors="coerce") / 30.44
 df_surv["OS"] = pd.to_numeric(df_surv["OS"], errors="coerce")
-df_surv["stage_clean"] = df_surv["ajcc_pathologic_tumor_stage"].apply(
-    lambda s: "I/II" if isinstance(s, str) and ("Stage I" in s or "Stage II" in s)
-    else ("III/IV" if isinstance(s, str) and ("Stage III" in s or "Stage IV" in s)
-    else None)
-)
+import re
+def classify_stage(s):
+    if not isinstance(s, str):
+        return None
+    if re.search(r"Stage IV", s):   return "IV"
+    if re.search(r"Stage III", s):  return "III"
+    if re.search(r"Stage II", s):   return "II"
+    if re.search(r"Stage I", s):    return "I"
+    return None
+
+df_surv["stage_clean"] = df_surv["ajcc_pathologic_tumor_stage"].apply(classify_stage)
 df_surv = df_surv.dropna(subset=["OS.time_months", "OS", "stage_clean"])
 df_surv = df_surv[df_surv["OS.time_months"] > 0]
 
 fig_km = go.Figure()
-colors = {"I/II": "#2196F3", "III/IV": "#F44336"}
+colors = {"I": "#2196F3", "II": "#4CAF50", "III": "#FF9800", "IV": "#F44336"}
 
 for stage, grp in df_surv.groupby("stage_clean"):
     kmf = KaplanMeierFitter()

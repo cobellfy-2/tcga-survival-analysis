@@ -30,7 +30,7 @@ surv   <- surv[match(colnames(counts), surv$bcr_patient_barcode), ]
 
 # VST normalization via DESeq2 (variance-stabilizing transform)
 message("Running VST normalization on ", ncol(counts), " samples...")
-col_data <- data.frame(row.names = colnames(counts), condition = "tumor")
+col_data <- data.frame(row.names = colnames(counts), condition = rep("tumor", ncol(counts)))
 dds <- DESeqDataSetFromMatrix(countData = counts,
                                colData   = col_data,
                                design    = ~ 1)

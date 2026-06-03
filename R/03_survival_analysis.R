@@ -25,7 +25,7 @@ survival_df <- readRDS(file.path(PROCESSED_DIR, "survival_df.rds"))
 df <- survival_df |>
   mutate(
     age_group = ifelse(
-      suppressWarnings(as.numeric(age_at_initial_pathologic_diagnosis)) >= 60,
+      suppressWarnings(as.numeric(age_at_diagnosis)) >= 60,
       ">=60", "<60"),
     stage_clean = case_when(
       grepl("Stage I[^V]|Stage I$", ajcc_pathologic_tumor_stage, ignore.case = TRUE) ~ "I/II",
