@@ -67,6 +67,10 @@ mod_immune_server <- function(id, immune_df) {
       col <- input$score_type
       gv  <- if (input$group_by == "stage") "stage_clean" else "subtype"
 
+      if (!gv %in% colnames(df)) return(
+        ggplot() + annotate("text", x=0.5, y=0.5,
+          label=paste("Column", gv, "not available."), size=5) + theme_void()
+      )
       df2 <- df |> filter(!is.na(.data[[gv]]))
       pal <- if (input$group_by == "stage")
         c("#2196F3","#4CAF50","#FF9800","#F44336")

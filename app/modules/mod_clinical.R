@@ -91,8 +91,8 @@ mod_clinical_server <- function(id, survival_df, survival_sub) {
       gv  <- group_var()
       pal <- palette_map[[input$group_by]]
 
-      df[[".group"]] <- df[[gv]]
-      km <- survfit(Surv(OS.time_m, OS) ~ .group, data = df)
+      df[["grp"]] <- df[[gv]]
+      km <- survfit(Surv(OS.time_m, OS) ~ grp, data = df)
 
       p <- ggsurvplot(km, data = df,
                       palette    = pal,

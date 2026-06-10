@@ -38,7 +38,8 @@ mod_pathway_ui <- function(id) {
 
 mod_pathway_server <- function(id, enrich_res) {
   moduleServer(id, function(input, output, session) {
-    library(enrichplot)
+    requireNamespace("enrichplot", quietly = TRUE)
+    dotplot <- enrichplot::dotplot
 
     output$ora_plot <- renderPlot({
       ora <- enrich_res$ora_go
