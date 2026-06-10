@@ -61,8 +61,8 @@ cv_fit <- cv.glmnet(
   alpha    = 1,
   nfolds   = 10,
   parallel = FALSE,
-  cox.ties = "efron",   # silence v5.1 default-change warning; efron is more accurate
-  maxit    = 250000     # more iterations for convergence at small lambdas
+  cox.ties = "efron",                    # efron is more accurate; silences v5.1 warning
+  control  = list(maxit = 250000)       # more iterations for convergence at small lambdas
 )
 
 # Plot CV curve

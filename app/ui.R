@@ -8,10 +8,9 @@ library(plotly)
 for (f in list.files("modules", full.names = TRUE)) source(f)
 
 ui <- page_navbar(
-  title = "TCGA-BRCA Survival Analysis",
-  theme = bs_theme(bootswatch = "flatly", primary = "#2196F3"),
-  bg    = "#1a1a2e",
-  inverse = TRUE,
+  title          = "TCGA-BRCA Survival Analysis",
+  theme          = bs_theme(bootswatch = "flatly", primary = "#2196F3"),
+  navbar_options = navbar_options(bg = "#1a1a2e"),
 
   # ── Tab 1: Overview ──────────────────────────────────────────────────────
   nav_panel("📊 Overview",      mod_overview_ui("overview")),

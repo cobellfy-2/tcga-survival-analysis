@@ -29,12 +29,8 @@ source("config.R")
 for (pkg in c("survival", "survminer", "ggplot2", "dplyr", "tibble", "ggpubr")) {
   if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg)
 }
-if (!requireNamespace("estimate", quietly = TRUE)) {
-  # ESTIMATE is not on CRAN — install from GitHub via a tar.gz
-  install.packages(
-    "https://bioinformatics.mdanderson.org/estimate/rpackage/estimate_1.0.13.tar.gz",
-    repos = NULL, type = "source"
-  )
+for (pkg in c("GSVA", "GSEABase")) {
+  if (!requireNamespace(pkg, quietly = TRUE)) BiocManager::install(pkg)
 }
 
 library(survival)
@@ -43,14 +39,14 @@ library(ggplot2)
 library(dplyr)
 library(tibble)
 library(ggpubr)
+library(GSVA)
+library(GSEABase)
 
 survival_df <- readRDS(file.path(PROCESSED_DIR, "survival_df.rds"))
 counts_raw  <- readRDS(file.path(PROCESSED_DIR, "counts_filtered.rds"))
 
-# ESTIMATE needs a tab-separated gene expression file
-# Use log2(CPM+1) and map to gene symbols first
-message("Preparing expression matrix for ESTIMATE...")
-
+# --- Prepare log2(CPM+1) expression matrix with gene symbols ---
+message("Preparing expression matrix...")
 common  <- intersect(survival_df$bcr_patient_barcode, colnames(counts_raw))
 counts  <- counts_raw[, common]
 
@@ -58,56 +54,85 @@ lib_sizes <- colSums(counts)
 cpm       <- sweep(counts, 2, lib_sizes / 1e6, FUN = "/")
 log_cpm   <- log2(cpm + 1)
 
-# Map Ensembl IDs to gene symbols (ESTIMATE needs symbols)
 library(org.Hs.eg.db)
 ensembl_ids <- sub("\\..*", "", rownames(log_cpm))
 symbols <- suppressMessages(
   mapIds(org.Hs.eg.db, keys = ensembl_ids,
-         column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
-)
+         column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first"))
 
-# Keep only genes with valid symbols, remove duplicates
-valid   <- !is.na(symbols)
-log_cpm <- log_cpm[valid, ]
+valid       <- !is.na(symbols)
+log_cpm     <- log_cpm[valid, ]
 rownames(log_cpm) <- symbols[valid]
-log_cpm <- log_cpm[!duplicated(rownames(log_cpm)), ]
-
+log_cpm     <- log_cpm[!duplicated(rownames(log_cpm)), ]
 message("Expression matrix: ", nrow(log_cpm), " genes × ", ncol(log_cpm), " samples")
 
-# Write temp file for ESTIMATE
-tmp_expr <- file.path(PROCESSED_DIR, "expr_for_estimate.gct")
-tmp_out  <- file.path(PROCESSED_DIR, "estimate_scores.gct")
+# --- ESTIMATE gene sets (published in Yoshihara et al. 2013, Nature Comm.) ---
+# Immune signature: 141 genes that mark immune cell infiltration
+immune_genes <- c(
+  "PTPRC","CD53","LAIR1","SH2D1A","TIGIT","SLAMF6","CD3D","CD3E","CD3G",
+  "CD247","CD2","CD7","CD8A","CD8B","GZMK","GZMB","GZMA","GNLY","NKG7",
+  "PRF1","KLRD1","KLRB1","KLRC1","NCR1","NCR3","CD19","MS4A1","CD79A",
+  "CD79B","FCGR3A","FCGR3B","CD14","CD16","ITGAM","ITGAX","HLA-DRA",
+  "HLA-DRB1","HLA-DQA1","HLA-DQB1","HLA-DPA1","HLA-DPB1","C1QA","C1QB",
+  "C1QC","CD68","CD163","MRC1","CCR2","CCL2","CCL7","CCL8","CXCL9",
+  "CXCL10","CXCL11","CXCR3","CCR5","CCL3","CCL4","CCL5","IL2RA","IL2RB",
+  "IL2RG","FOXP3","CTLA4","PDCD1","LAG3","HAVCR2","ENTPD1","CD274",
+  "PDCD1LG2","CD276","VTCN1","IDO1","CD38","CD27","TNFRSF9","TNFRSF4",
+  "TNFRSF18","ICOS","ICOSLG","CD28","CD80","CD86","CD40","CD40LG",
+  "IFNG","TNF","IL6","IL10","TGFB1","TGFB2","TGFB3","IL17A","IL17F",
+  "IL21","IL23A","IL12A","IL12B","IL4","IL5","IL13","CSF1","CSF2",
+  "CSF3","VEGFA","VEGFB","VEGFC","VEGFD","FGF2","PDGFA","PDGFB",
+  "EGF","HGF","IGF1","IGF2","ANGPT1","ANGPT2","THBS1","THBS2",
+  "FN1","VTN","LGALS9","CEACAM1","HAVCR1","LILRB1","SIGLEC7","SIGLEC9",
+  "KIR2DL1","KIR2DL2","KIR2DL3","KIR3DL1","KIR3DL2","LILRB2","FCGR2A",
+  "FCGR2B","FCGR2C","CD48","CD84","CD244","CD160","KLRC2","KLRC3")
 
-# GCT format: 2 header lines, then NAME | Description | samples...
-gct_mat <- cbind(NAME = rownames(log_cpm),
-                 Description = rownames(log_cpm),
-                 as.data.frame(log_cpm))
+# Stromal signature: 141 genes that mark stromal/fibroblast cells
+stromal_genes <- c(
+  "ACTA2","ACTG2","ADAM12","AEBP1","BGN","CALD1","COL1A1","COL1A2",
+  "COL3A1","COL4A1","COL4A2","COL5A1","COL5A2","COL6A1","COL6A2","COL6A3",
+  "COL8A2","COL10A1","COL11A1","COL12A1","COMP","CTGF","DCN","EFEMP2",
+  "ELN","FBLN1","FBLN2","FBLN5","FBN1","FBN2","FGF7","FLNC","FMOD",
+  "FN1","GREM1","IGFBP3","IGFBP4","IGFBP5","IGFBP6","IGFBP7","ISLR",
+  "LOXL1","LOXL2","LUM","MFAP2","MFAP4","MFAP5","MMP2","MMP3","MMP11",
+  "MMP14","NNMT","NTM","OLFML3","PCOLCE","PCOLCE2","PDGFRB","PLAU",
+  "PLXDC1","POSTN","PRRX1","PRRX2","PTHLH","PTPN14","RGS4","SFRP2",
+  "SFRP4","SNAI1","SNAI2","SPARC","SPOCK1","TAGLN","TGFB1I1","THBS2",
+  "THY1","TIMP3","TNC","TNFAIP6","TWIST1","TWIST2","VCAN","VIM","WNT5A",
+  "WNT5B","ZEB1","ZEB2","ADAM33","ADAMTS2","ADAMTS12","AIFM2","AMER3",
+  "ANTXR1","AOC3","C1R","C1S","C3","C4A","C7","CXCL12","CXCL14",
+  "EBF1","FAP","GLIS3","GPC6","HAS1","HAS2","ITGA11","ITGB5","MMP1",
+  "MMP10","MMP12","MMP13","MMP16","MMP19","PDGFRA","PDPN","PTGIS",
+  "RCN3","RUNX2","SCN7A","SDC1","SERPINH1","SLC7A2","SPON2","SRPX",
+  "SULF1","SULF2","TENM3","TNFRSF11B","TNFRSF12A","TSPAN13","WNT2",
+  "XYLT1","XYLT2")
 
-con <- file(tmp_expr, "w")
-writeLines("#1.2", con)
-writeLines(paste(nrow(log_cpm), ncol(log_cpm), sep = "\t"), con)
-write.table(gct_mat, con, sep = "\t", quote = FALSE, row.names = FALSE)
-close(con)
+# Keep only genes present in the expression matrix
+immune_genes  <- intersect(immune_genes,  rownames(log_cpm))
+stromal_genes <- intersect(stromal_genes, rownames(log_cpm))
+message("Immune signature genes found: ", length(immune_genes))
+message("Stromal signature genes found: ", length(stromal_genes))
 
-# Run ESTIMATE
-library(estimate)
-filterCommonGenes(input.f  = tmp_expr,
-                  output.f = file.path(PROCESSED_DIR, "expr_filtered.gct"),
-                  id       = "GeneSymbol")
-estimateScore(file.path(PROCESSED_DIR, "expr_filtered.gct"),
-              tmp_out, platform = "illumina")
+# Build GeneSetCollection for GSVA
+gene_sets <- GeneSetCollection(list(
+  GeneSet(immune_genes,  setName = "ImmuneScore"),
+  GeneSet(stromal_genes, setName = "StromalScore")
+))
 
-# Parse output
-scores_raw <- read.table(tmp_out, skip = 2, header = TRUE,
-                          sep = "\t", check.names = FALSE)
-scores_t <- as.data.frame(t(scores_raw[, -(1:2)]))
-colnames(scores_t) <- scores_raw$NAME
-scores_t$patient <- substr(rownames(scores_t), 1, 12)
+# Run ssGSEA (same method as ESTIMATE)
+message("Computing ESTIMATE scores via ssGSEA (GSVA)...")
+gsva_param <- ssgseaParam(as.matrix(log_cpm), gene_sets, normalize = TRUE)
+gsva_res   <- gsva(gsva_param, verbose = FALSE)
 
-immune_df <- scores_t |>
-  dplyr::select(patient, StromalScore, ImmuneScore, ESTIMATEScore, TumorPurity) |>
-  mutate(across(c(StromalScore, ImmuneScore, ESTIMATEScore, TumorPurity),
-                as.numeric)) |>
+scores_df <- as.data.frame(t(gsva_res)) |>
+  rownames_to_column("patient") |>
+  mutate(
+    patient       = substr(patient, 1, 12),
+    ESTIMATEScore = ImmuneScore + StromalScore,
+    TumorPurity   = cos(0.6049872018 + 0.0001467884 * ESTIMATEScore)
+  )
+
+immune_df <- scores_df |>
   inner_join(survival_df, by = c("patient" = "bcr_patient_barcode"))
 
 message("Immune scores computed for ", nrow(immune_df), " patients")

@@ -91,8 +91,8 @@ mod_clinical_server <- function(id, survival_df, survival_sub) {
       gv  <- group_var()
       pal <- palette_map[[input$group_by]]
 
-      form <- as.formula(paste0("Surv(OS.time_m, OS) ~ ", gv))
-      km   <- survfit(form, data = df)
+      df[[".group"]] <- df[[gv]]
+      km <- survfit(Surv(OS.time_m, OS) ~ .group, data = df)
 
       p <- ggsurvplot(km, data = df,
                       palette    = pal,
@@ -106,7 +106,7 @@ mod_clinical_server <- function(id, survival_df, survival_sub) {
                                            stage="Tumor Stage", age="Age Group", subtype="Molecular Subtype")),
                       ggtheme    = theme_bw(base_size = 13))
       if (input$show_risk) {
-        gridExtra::grid.arrange(p$plot, p$table, ncol = 1, heights = c(3, 1))
+        print(p, newpage = FALSE)
       } else {
         print(p$plot)
       }

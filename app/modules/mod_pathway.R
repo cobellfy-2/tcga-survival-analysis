@@ -38,14 +38,16 @@ mod_pathway_ui <- function(id) {
 
 mod_pathway_server <- function(id, enrich_res) {
   moduleServer(id, function(input, output, session) {
+    library(enrichplot)
 
     output$ora_plot <- renderPlot({
       ora <- enrich_res$ora_go
       if (is.null(ora) || nrow(ora) == 0) {
         ggplot() + annotate("text", x=0.5, y=0.5,
-          label="No significant ORA terms found.", size=6) + theme_void()
+          label="No significant ORA terms found.\nThis is a valid result — the gene list may be\ntoo small or the signal too diffuse for ORA.\nCheck the GSEA tab for full-ranked results.",
+          size=5, hjust=0.5) + theme_void()
       } else {
-        dotplot(ora, showCategory = 20,
+        enrichplot::dotplot(ora, showCategory = 20,
                 title = "ORA: GO Biological Process (FDR < 5% survival genes)") +
           theme(axis.text.y = element_text(size = 9))
       }
@@ -57,7 +59,7 @@ mod_pathway_server <- function(id, enrich_res) {
         ggplot() + annotate("text", x=0.5, y=0.5,
           label="No significant GSEA pathways found.", size=6) + theme_void()
       } else {
-        dotplot(gsea, showCategory = 20, split = ".sign",
+        enrichplot::dotplot(gsea, showCategory = 20, split = ".sign",
                 title = "GSEA: GO Biological Process") +
           facet_grid(. ~ .sign) +
           theme(axis.text.y = element_text(size = 8))

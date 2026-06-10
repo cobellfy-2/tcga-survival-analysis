@@ -118,6 +118,7 @@ gsea_go <- gseGO(
   maxGSSize     = 500,
   pvalueCutoff  = 0.05,
   pAdjustMethod = "BH",
+  nPermSimple   = 10000,   # more permutations → fewer NA p-values for unbalanced pathways
   verbose       = FALSE
 )
 
