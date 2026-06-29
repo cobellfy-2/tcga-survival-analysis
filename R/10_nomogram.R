@@ -98,28 +98,43 @@ nomo <- nomogram(
 
 # Save as PNG
 png(file.path(FIGURES_DIR, "nomogram.png"),
-    width = 1100, height = 700, res = 130)
+    width = 1800, height = 900, res = 150)
+par(mar = c(2, 2, 4, 2), bg = "white")
 plot(nomo,
-     xfrac     = 0.35,
+     xfrac       = 0.32,
      label.every = 1,
-     col.grid  = gray(c(0.8, 0.95)),
-     main      = "Nomogram: Predicted Overall Survival (TCGA-BRCA)")
+     col.grid    = gray(c(0.88, 0.96)),
+     lplabel     = "Linear Predictor",
+     fun.side    = c(1, 3),
+     cex.axis    = 0.85,
+     cex.var     = 1.0,
+     col.conf    = c("#2196F3", "#F44336"),
+     main        = "Nomogram — Predicted 3-year & 5-year Overall Survival (TCGA-BRCA)",
+     cex.main    = 1.2)
 dev.off()
 message("Saved: nomogram.png")
 
 # --- Calibration plot (3-year) ---
 # Compares predicted vs. observed survival
 png(file.path(FIGURES_DIR, "calibration_3yr.png"),
-    width = 700, height = 600, res = 130)
-# suppressWarnings: groupkm() warns about small bins in bootstrap samples — expected
+    width = 1200, height = 900, res = 150)
+par(mar = c(5, 5, 5, 3), bg = "white", cex.lab = 1.2, cex.axis = 1.1)
 cal <- suppressWarnings(
   calibrate(fit_nomo, cmethod = "KM", method = "boot",
-            u = 36, B = 100, cuts = 5)  # cuts=5 = fewer groups → larger bins
+            u = 36, B = 100, cuts = 5)
 )
 plot(cal,
-     xlab = "Predicted 3-year survival",
-     ylab = "Observed 3-year survival (KM)",
-     main = "Calibration: 3-year OS Prediction")
+     xlab  = "Predicted 3-year Survival Probability",
+     ylab  = "Observed 3-year Survival Probability (Kaplan-Meier)",
+     main  = "Calibration Plot — 3-year Overall Survival",
+     col   = "#2196F3",
+     lwd   = 2,
+     subtitles = FALSE)
+abline(0, 1, col = "#F44336", lty = 2, lwd = 2)
+legend("topleft",
+       legend = c("Calibration curve", "Ideal (perfect calibration)"),
+       col    = c("#2196F3", "#F44336"),
+       lty    = c(1, 2), lwd = 2, bty = "n", cex = 1.1)
 dev.off()
 message("Saved: calibration_3yr.png")
 

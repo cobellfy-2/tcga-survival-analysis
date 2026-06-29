@@ -1,6 +1,6 @@
 data/raw/
 data/processed/
-results/
+results/*.rds
 *.RData
 *.rds
 .Rhistory
@@ -9,3 +9,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .Rproj.user/
+# Keep figures and HTML in results/
+!results/figures/
+!results/figures/*.png
+!results/*.html

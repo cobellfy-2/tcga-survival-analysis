@@ -32,8 +32,31 @@ mod_gene_ui <- function(id) {
         br(),
         div(class = "alert alert-secondary",
           h6("Volcano plot — all 5,000 genes"),
-          p("Red = high expression worsens survival | Blue = protective | Hover for gene name"),
-          plotlyOutput(ns("volcano"), height = "320px")
+          p("Hover over any dot to see the gene name, HR, and adjusted p-value."),
+          plotlyOutput(ns("volcano"), height = "320px"),
+          br(),
+          div(class = "alert alert-light border",
+            h6("How to read this volcano plot"),
+            tags$ul(style="margin-bottom:0",
+              tags$li(strong("X-axis (log2 Hazard Ratio):"),
+                " How strongly gene expression affects survival. ",
+                strong("Left (negative)"), " = high expression → better survival (protective). ",
+                strong("Right (positive)"), " = high expression → worse survival (risky). ",
+                "Most genes cluster near 0 — little effect on survival."),
+              tags$li(strong("Y-axis (-log10 adj. p-value):"),
+                " Statistical confidence. Higher up = more significant. ",
+                "The horizontal dashed line = FDR threshold of 5% (adjusted p = 0.05). ",
+                "Only dots above this line are statistically reliable findings."),
+              tags$li(strong("Color:"),
+                " Blue dots (top-left) = protective genes — high expression correlates with longer survival. ",
+                "Red dots (top-right) = risk genes — high expression correlates with shorter survival. ",
+                "Grey = not significant."),
+              tags$li(strong("Your data:"),
+                " Most significant genes have negative log2HR (blue, left side) — meaning most survival-associated
+                genes in BRCA are protective when highly expressed. This makes biological sense:
+                many of these are immune or differentiation markers active in less aggressive tumors.")
+            )
+          )
         )
       )
     )

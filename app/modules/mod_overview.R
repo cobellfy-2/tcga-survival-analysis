@@ -36,11 +36,13 @@ mod_overview_ui <- function(id) {
       column(6,
         h4("Analysis Pipeline"),
         tags$ol(
-          tags$li(strong("Clinical Survival:"), " Kaplan-Meier curves, log-rank test, Cox regression by stage, age, subtype"),
-          tags$li(strong("Gene Explorer:"), " Search any gene — instant KM curve + hazard ratio"),
-          tags$li(strong("Lasso Signature:"), " Penalized Cox regression selects a sparse prognostic gene signature"),
-          tags$li(strong("Pathway Enrichment:"), " ORA + GSEA identifies biological processes enriched in survival genes"),
-          tags$li(strong("Immune Landscape:"), " ESTIMATE scores quantify immune infiltration and correlate with survival")
+          tags$li(strong("Clinical Survival:"), " Kaplan-Meier + log-rank test + Cox regression by stage, age, molecular subtype"),
+          tags$li(strong("Gene Explorer:"), " Search any of 5,000 genes — instant KM curve, HR, and adj. p-value"),
+          tags$li(strong("Lasso Signature:"), " L1-penalized Cox selects 52 prognostic genes; C-index = 0.881 on held-out data"),
+          tags$li(strong("Model Validation:"), " 70/30 train-test split; C-index, Brier score, nomogram, calibration plot"),
+          tags$li(strong("Pathway Enrichment:"), " GSEA across 5,000 ranked genes → lipid metabolism and cell-adhesion enriched in risk genes"),
+          tags$li(strong("Immune Landscape:"), " GSVA-based ESTIMATE scores; tumor purity median = 82%; immune infiltration not prognostic in bulk BRCA"),
+          tags$li(strong("Somatic Mutations:"), " 85,864 mutations, 1,020 patients; PIK3CA (34.5%) and TP53 (34.3%) co-dominant; OncoPrint + co-occurrence")
         )
       ),
       column(6,

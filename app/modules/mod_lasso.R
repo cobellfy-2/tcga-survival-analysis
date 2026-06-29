@@ -10,7 +10,7 @@ mod_lasso_ui <- function(id) {
         "It adds an L1 penalty (λ × Σ|β|) to the Cox likelihood, which shrinks weak gene coefficients to exactly zero. ",
         "Only genes with real prognostic signal survive. ",
         strong("Cross-validation (10-fold)"), " tests ~100 λ values and picks the one that best predicts survival on held-out data. ",
-        "We use ", strong("lambda.1se"), " — the most parsimonious model within 1 standard error of the optimum. ",
+        "This analysis uses ", strong("lambda.1se"), " — the most parsimonious model within 1 standard error of the optimum. ",
         "The resulting ", strong("risk score"), " (= weighted sum of selected gene expressions) ",
         "stratifies patients into high/low risk groups.")
     ),
