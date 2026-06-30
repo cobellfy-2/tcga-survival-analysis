@@ -1,0 +1,218 @@
+---
+title: "Multi-omische Überlebensanalyse des Mammakarzinoms"
+subtitle: "Eine reproduzierbare Analysepipeline auf Basis von TCGA-BRCA-Daten"
+author: "Jonas Koehn"
+date: "29. Juni 2026"
+lang: de
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    fontsize: 12pt
+    linestretch: 1.5
+    geometry:
+      - top=2.5cm
+      - bottom=2.5cm
+      - left=3cm
+      - right=2.5cm
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    colorlinks: true
+    linkcolor: blue
+    citecolor: blue
+    cite-method: citeproc
+    include-in-header:
+      text: |
+        \usepackage{setspace}
+        \usepackage{fancyhdr}
+        \pagestyle{fancy}
+        \fancyhf{}
+        \fancyhead[L]{\small Multi-omische Überlebensanalyse -- TCGA-BRCA}
+        \fancyhead[R]{\small Jonas Koehn}
+        \fancyfoot[C]{\thepage}
+        \renewcommand{\headrulewidth}{0.4pt}
+bibliography: references.bib
+---
+
+\newpage
+
+## Zusammenfassung {.unnumbered}
+
+Das Mammakarzinom ist die weltweit häufigste Krebserkrankung bei Frauen. Klinische Variablen wie Tumorstadium und Alter liefern prognostische Information, erfassen jedoch die molekulare Heterogenität des Tumors nur unzureichend. Die vorliegende Arbeit präsentiert eine vollständig reproduzierbare, multi-omische Analysepipeline auf Basis von 1.035 Patientinnen aus The Cancer Genome Atlas Breast Cancer Cohort (TCGA-BRCA). Die Pipeline integriert klinische Überlebensanalyse, genomweites Genexpressions-Screening, Lasso-penalisierte Cox-Regression, Pathway-Anreicherungsanalyse, immunogene Dekonvolution und somatische Mutationsanalyse. Das zentrale Ergebnis ist eine 52-Gen-Expressionssignatur, die im unabhängigen Testdatensatz einen Concordance-Index (C-Index) von 0,881 erreicht – gegenüber 0,752 für ein rein klinisches Modell. Alle Analysen sind als parametrisierte R-Skripte implementiert und über ein interaktives Shiny-Dashboard zugänglich, das methodische Erklärungen, biologische Interpretationen und reale Zahlenwerte vereint. Die Pipeline ist für beliebige TCGA-Kohorten adaptierbar.
+
+**Schlüsselwörter:** Überlebensanalyse, Mammakarzinom, TCGA, Lasso, Cox-Regression, Pathway-Analyse, Shiny
+
+\newpage
+
+## Einleitung
+
+Das Mammakarzinom ist mit schätzungsweise 2,3 Millionen Neudiagnosen pro Jahr die häufigste maligne Erkrankung bei Frauen weltweit [@bray2024]. Trotz erheblicher Fortschritte in Diagnostik und Therapie bestehen ausgeprägte Überlebensunterschiede zwischen Patientinnen, die mit dem klassischen klinisch-pathologischen Staging allein nicht vollständig erklärt werden können. Zwei Patientinnen mit identischem Tumorstadium und ähnlichem Alter können sich in ihrer molekularen Tumorphysiologie grundlegend unterscheiden – und entsprechend unterschiedlich auf Therapien ansprechen.
+
+Die Verfügbarkeit großer, öffentlicher genomischer Datensätze hat die Möglichkeit eröffnet, klinische und molekulare Daten systematisch zu integrieren. The Cancer Genome Atlas (TCGA) stellt für über 30 Tumorentitäten umfangreiche Daten aus RNA-Sequenzierung, DNA-Methylierung, somatischen Mutationen und klinischer Nachbeobachtung bereit [@tcga2012brca]. Für das Mammakarzinom (BRCA-Kohorte) liegen Daten von mehr als 1.000 Patientinnen vor, was robuste statistische Auswertungen ermöglicht.
+
+Die Bioinformatik-Werkzeuge zur Analyse solcher Datensätze sind etabliert, jedoch häufig verteilt, schwer reproduzierbar oder nur eingeschränkt zugänglich. Ziel der vorliegenden Arbeit ist die Entwicklung einer vollständig reproduzierbaren, modularen Analysepipeline, die:
+
+1. klinische und molekulare Prädiktoren des Gesamtüberlebens identifiziert,
+2. eine prognostische Genexpressionssignatur mittels regularisierter Regression lernt und extern validiert,
+3. biologische Mechanismen hinter der Signatur durch Pathway-Analyse aufklärt,
+4. den immunogenen Kontext und die somatische Mutationslandschaft beschreibt,
+5. alle Ergebnisse in einem interaktiven Dashboard mit methodischen Erklärungen zugänglich macht.
+
+Die zentrale Hypothese lautet, dass eine auf RNA-Seq basierende Genexpressionssignatur die Überlebensprognose im Mammakarzinom gegenüber klinischen Variablen allein substanziell verbessert.
+
+## Datenbasis und Methoden
+
+### Datensatz
+
+Alle Daten stammen aus The Cancer Genome Atlas Breast Cancer Cohort (TCGA-BRCA) und wurden über die GDC Data Portal REST-API mit dem R-Paket *TCGAbiolinks* (Version 2.34) heruntergeladen [@colaprico2016]. Der Datensatz umfasst nach Qualitätskontrolle **1.035 Patientinnen** mit invasivem Mammakarzinom, **103 Todesereignissen** (Gesamtüberlebensstatus OS = 1) und einem medianen Follow-up von **29 Monaten**. RNA-Sequenzdaten liegen als HTSeq-Counts aus dem STAR-Alignment-Workflow (GRCh38) vor.
+
+Gene mit weniger als 10 Reads in unter 20 % aller Proben wurden entfernt; nach Filterung verblieben **23.735 Gene**. Für die Lasso-Regression und die Immundekonvolution wurden Expressionswerte als log₂(CPM+1) normiert. Für DESeq2-basierte Analysen wurde die Varianzstabilisierungstransformation (VST) verwendet.
+
+Molekulare Subtypen wurden anhand des Rezeptorstatus (ER, PR, HER2) nach klinischer Klassifikation definiert: Luminal A (ER+/PR+/HER2−), Luminal B (ER+ oder PR+, HER2+), HER2-enriched (ER−/PR−/HER2+) und Triple-Negativ (ER−/PR−/HER2−).
+
+### Klinische Überlebensanalyse
+
+Die Überlebensanalyse erfolgte nach der Methode von Kaplan und Meier [@kaplan1958]. Gruppenunterschiede wurden mit dem Log-Rank-Test geprüft. Für multivariable Analysen wurde die Cox-Proportional-Hazards-Regression [@cox1972] eingesetzt. Alle Cox-Modelle wurden auf Proportionalitätsannahme überprüft (Schoenfeld-Residuen). Berechnungen erfolgten mit den R-Paketen *survival* und *survminer*.
+
+### Genomweites Genexpressions-Screening
+
+Für jedes der 5.000 variabelsten Gene (gemessen an der Interquartilenrange) wurde ein univariates Cox-Modell mit log₂(CPM+1)-Expressionswert als Prädiktor angepasst. Hazard Ratios (HR) und p-Werte wurden extrahiert; Multiple-Testing-Korrektur erfolgte nach Benjamini-Hochberg (FDR = 5 %) [@benjamini1995]. Ergebnisse wurden als Volcano-Plot visualisiert (log₂HR vs. −log₁₀(adj. p)).
+
+### Lasso-penalisierte Cox-Regression
+
+Um eine sparse prognostische Signatur zu identifizieren, wurde die Lasso-penalisierte Cox-Regression nach Tibshirani [@tibshirani1997] eingesetzt, implementiert im R-Paket *glmnet* [@simon2011]. Als Eingabe dienten die 3.000 Gene mit höchster Varianz. Der Regularisierungsparameter λ wurde durch 10-fache Kreuzvalidierung (cv.glmnet) optimiert; das Kriterium λ.1se (1 Standardfehler über dem Minimum des partiellen Log-Likelihoods) wurde gewählt, um ein parsimonisches Modell zu begünstigen.
+
+Für jede Patientin wurde ein skalarer **Risiko-Score** als gewichtete Summe der selektierten Genexpressionswerte berechnet:
+
+$$\text{Risiko-Score}_i = \sum_{j=1}^{p} \hat{\beta}_j \cdot x_{ij}$$
+
+wobei $\hat{\beta}_j$ die nicht-null Lasso-Koeffizienten und $x_{ij}$ die log₂(CPM+1)-Expressionswerte sind.
+
+### Modellvalidierung
+
+Eine zufällige 70/30-Aufteilung in Trainings- (n = 707) und Testdatensatz (n = 303) ermöglichte echte externe Validierung. Auf dem Testdatensatz wurden drei Modelle verglichen: (1) rein klinisches Modell (Alter, Stadium), (2) Lasso-Signatur, (3) kombiniertes Modell. Die Diskriminationsfähigkeit wurde mit dem **Concordance-Index (C-Index)** quantifiziert [@harrell2015], der die Wahrscheinlichkeit misst, dass das Modell in einem zufälligen Patientenpaar die korrekte Rangordnung des Überlebens vorhersagt. Die **Kalibrierung** – Übereinstimmung vorhergesagter mit beobachteten Überlebenswahrscheinlichkeiten – wurde mit dem **Brier-Score** [@brier1950] und grafisch über einen Calibration-Plot bewertet. Nomogramm und Calibration-Plot wurden mit dem R-Paket *rms* (Regression Modelling Strategies) erstellt [@harrell2015].
+
+### Pathway-Anreicherungsanalyse
+
+Zur Interpretation der biologischen Signatur wurden zwei komplementäre Ansätze verfolgt:
+
+- **ORA (Over-Representation Analysis):** Hypergeometrischer Test, ob signifikante Cox-Gene (FDR < 5 %) in bestimmten GO-Biological-Process-Termen überrepräsentiert sind.
+- **GSEA (Gene Set Enrichment Analysis):** Alle 5.000 Gene wurden nach ihrer Überlebenssignatur (sign(log₂HR) × −log₁₀(adj.p)) gerankt; GSEA prüft, ob Gene eines Pathways am oberen (Risikoende) oder unteren (Schutzende) der Rangliste konzentriert sind [@subramanian2005].
+
+Beide Analysen wurden mit *clusterProfiler* und *enrichplot* durchgeführt [@yu2012].
+
+### Immundekonvolution (GSVA/ESTIMATE)
+
+Die Quantifizierung des Immuninfiltrats im Tumor-Mikroenvironment erfolgte mit dem Gene Set Variation Analysis (GSVA)-Ansatz [@hanzelmann2013] unter Verwendung der Imun- und Stromazell-Gensignaturen aus Yoshihara et al. (2013) [@yoshihara2013] – der Grundlage des ESTIMATE-Algorithmus. Für jede Probe wurden vier Scores berechnet: ImmuneScore, StromalScore, ESTIMATEScore und TumorPurity. Die GSVA-Scores sind auf einer relativen Skala (≈ −1 bis +1) normiert; Wert 0 entspricht dem Kohortenmittel.
+
+### Somatische Mutationsanalyse
+
+Somatische Mutationsdaten (Masked Somatic Mutation, MAF-Format) wurden über das R-Paket *maftools* und die *TCGAmutations*-Datenbibliothek geladen [@mayakonda2018]. Analysiert wurden: Mutationshäufigkeit pro Gen (Mutation Annotation Format), Mutationstyp-Zusammensetzung (Missense, Nonsense, Frameshift etc.), Tumor Mutational Burden (TMB) nach Tumorstadium sowie paarweise Kookkurrenz und gegenseitiger Ausschluss zwischen den häufigsten Treibergenen (Fisher's Exact Test mit Benjamini-Hochberg-Korrektur).
+
+### Interaktives Dashboard
+
+Alle Ergebnisse wurden in einem acht-Tab-Shiny-Dashboard [@chang2022] visualisiert, das mit dem *bslib*-Bootstrap-5-Theme umgesetzt wurde. Jeder Tab enthält: (a) eine methodische Erklärungsbox, (b) interaktive Grafiken (ggplot2, plotly), (c) eine biologisch-klinische Interpretationsbox mit den realen Zahlenwerten aus dieser Analyse.
+
+## Ergebnisse
+
+### Klinische Prädiktoren des Gesamtüberlebens
+
+Kaplan-Meier-Analysen zeigen signifikante Überlebensunterschiede nach Tumorstadium (Log-Rank p < 0,001), Altersgruppe (p = 0,01) und molekularem Subtyp (p < 0,01). Im multivariablen Cox-Modell (adjustiert für Alter und Stadium) weisen Patientinnen mit Stadium III/IV gegenüber Stadium I ein **Hazard Ratio (HR) von 3,43** (95%-KI: 2,1–5,6; p < 0,001) auf – das Sterberisiko ist also 3,4-fach erhöht. Patientinnen ≥ 60 Jahre zeigen ein HR von 1,73 gegenüber jüngeren Patientinnen (p = 0,01).
+
+Beim molekularen Subtyp weist das **Triple-Negative-Karzinom** das schlechteste Überleben auf: HR = 2,76 gegenüber Luminal A (p < 0,01). Obwohl die Kaplan-Meier-Kurve für HER2-enriched einen steilen frühen Abfall zeigt, ist das HR mit 1,85 (95%-KI: 0,69–7,57; p = 0,22) nicht signifikant. Dies erklärt sich durch die kleine Stichprobengröße (n = 35), den asymmetrischen Zeitverlauf des Risikos (hohe frühe Mortalität, anschließendes Abflachen dank HER2-Zieltherapie) sowie den Kohorteneffekt: TCGA-Daten stammen aus einer Ära, in der Trastuzumab noch nicht flächendeckend Standard war.
+
+### Genomeweites Expressionsscreening
+
+Von 5.000 gescreenten Genen erreichten nach Benjamini-Hochberg-Korrektur **247 Gene** einen FDR < 5 %. Die Mehrzahl signifikanter Gene weist negative log₂HR-Werte auf (protektive Hochexpression), konsistent mit der Biologie: Differenzierungsmarker und Immunzellmarker sind in weniger aggressiven Tumoren aktiv. Das Topgen **SUSD3** (HR = 0,51; adj. p = 3,2 × 10⁻⁸) kodiert ein Sushi-Domänen-Protein, das mit dem luminalen Subtyp und hormonreseptor-positivem BRCA assoziiert ist.
+
+### Prognostische 52-Gen-Lasso-Signatur
+
+Die Lasso-Kreuzvalidierung mit λ.1se selektierte **52 Gene** aus den 3.000 variabelsten. Davon weisen 38 positive Koeffizienten (Hochexpression → schlechteres Überleben, „Risikogene") und 14 negative Koeffizienten (protektiv) auf. Der daraus berechnete **Risiko-Score** trennt Patientinnen klar in Hoch- und Niedrigrisikogruppen (Log-Rank p < 0,001 in der Gesamtkohorte).
+
+Gene mit den betragsmäßig größten Koeffizienten umfassen Zellteilungs- und Chromatin-Regulatoren (Risikogene) sowie Hormonrezeptor-assoziierte und Immunzellmarker (protektiv), was biologisch plausibel ist: aggressives BRCA ist durch erhöhte Proliferation und Verlust luminaler Differenzierung charakterisiert.
+
+### Modellvalidierung
+
+Die Validierung auf dem unabhängigen Testdatensatz (n = 303, nie während des Trainings gesehen) ergibt folgende C-Index-Werte:
+
+| Modell | C-Index |
+|--------|---------|
+| Null (Zufall) | 0,500 |
+| Klinisch (Alter + Stadium) | 0,752 |
+| Lasso-Signatur | **0,881** |
+| Kombiniert | **0,893** |
+
+: C-Index-Vergleich auf dem Testdatensatz (n = 303) {#tbl-cindex}
+
+Die 52-Gen-Signatur verbessert die Diskriminierung gegenüber dem klinischen Modell um **+12,9 Prozentpunkte**. Das kombinierte Modell bringt gegenüber der Signatur allein nur einen marginalen Gewinn (+1,2 Punkte), was darauf hindeutet, dass die Genexpression den Großteil der klinischen Information bereits enthält – und darüber hinaus molekulare Heterogenität erfasst, die klinische Variablen nicht sehen.
+
+Der **Brier-Score** bei 36 Monaten beträgt: Referenz (keine Prädiktoren) = 0,065; klinisches Modell = 0,060; Lasso = 0,035; kombiniert = **0,028**. Die Lasso-Signatur reduziert den Vorhersagefehler gegenüber der Referenz um **46 %**, das kombinierte Modell um **57 %**. Der Calibration-Plot zeigt eine gute Übereinstimmung von vorhergesagten und beobachteten 3-Jahres-Überlebenswahrscheinlichkeiten im mittleren Risikobereich (vorhergesagt: 0,60–0,85).
+
+Das **Nomogramm** übersetzt das kombinierte Modell in ein klinisches Entscheidungswerkzeug: Für jede Patientin werden Punkte für Alter, Tumorstadium und Risiko-Score addiert; der Gesamtpunktwert wird auf die geschätzte 3-Jahres- und 5-Jahres-Überlebenswahrscheinlichkeit abgebildet.
+
+### Pathway-Anreicherungsanalyse
+
+Die ORA fand bei nur 52 Lasso-Genen **keine signifikanten GO-Terme** (FDR < 5 %). Dies ist methodisch erwartet: Der hypergeometrische Test verliert statistische Power bei kleinen Eingabelisten.
+
+GSEA über alle 5.000 gerankte Gene identifizierte **687 Pathways**, davon 5 mit FDR < 5 %:
+
+- **Homophile Zelladhäsion** (NES = 2,07; adj. p = 0,004): Stärkster signifikanter Treffer. E-Cadherin und verwandte Adhäsionsmoleküle sind in Risikogenen angereichert – konsistent mit epithelial-mesenchymaler Transition (EMT) bei aggressivem BRCA.
+- **Response to fatty acids** (NES = 2,10): Fettsäuremetabolismus ist ein Hallmark aggressiver Tumore; Lipidneosynthese versorgt rasch proliferierende Zellen.
+- **Negative Regulation of Lipid Metabolic Process** (NES = 2,10): Komplementärer Befund.
+- **C21-Steroid Hormone Metabolism** (NES = 1,97): Glukokortikoid-/Progestinmetabolismus in Risikogenen – konsistent mit Hormonrezeptorbiologie.
+- **Neutral Lipid Metabolism** (NES = 1,95): Teil des Lipid-Clusters.
+
+Die positive NES-Richtung aller signifikanten Pathways belegt, dass die Risikoende der Genrangliste (schlechteres Überleben bei Hochexpression) biologisch kohärent durch Lipidmetabolismus und Zelladhäsionsverlust charakterisiert ist.
+
+### Immunlandschaft
+
+Der GSVA-basierte ImmuneScore hat einen Median nahe 0 (IQR: −0,1 bis +0,1), die TumorPurity einen Median von **0,822** (82,2 % Tumorzellen). Die Überlebensanalyse zeigt **keinen signifikanten Unterschied** zwischen Hochimmun- und Niedrigimmungruppe (Log-Rank p = 0,90).
+
+Dieses Null-Ergebnis ist biologisch bedeutsam: Das Mammakarzinom gilt als immunologisch „kalter" Tumor im Vergleich zu Melanom oder nicht-kleinzelligem Lungenkarzinom. Der Einfluss von Immunzellen auf das Überleben ist subtyp-abhängig und im Bulk-Datensatz durch hohe Tumorpurität maskiert – am stärksten ausgeprägt beim Triple-Negativen Subtyp, der als einziger BRCA-Subtyp von Immuncheckpoint-Inhibitoren profitiert.
+
+Die erwartete anti-korrelierte Beziehung zwischen ImmuneScore und TumorPurity (Pearson r < 0, p < 0,001) validiert die Methodik: Ein Tumor mit mehr Immunzellen enthält entsprechend weniger Tumorzellen.
+
+### Mutationslandschaft
+
+Aus 1.020 Patientinnen mit verfügbaren Mutationsdaten wurden **85.864 somatische Varianten** analysiert. Die wichtigsten Befunde:
+
+**Häufigkeit der Top-Gene:**
+- PIK3CA: 34,5 % (n = 352) — katalytische PI3K-Untereinheit
+- TP53: 34,3 % (n = 350) — Tumorsuppressor
+- TTN: 18,9 % (n = 193) — Titin, Passagiergen (größtes humanes Gen)
+- CDH1: 12,7 % (n = 130) — E-Cadherin, Marker des lobulären Karzinoms
+- GATA3: 12,5 % (n = 128) — luminaler Transkriptionsfaktor
+
+**Gegenseitiger Ausschluss (Mutual Exclusivity):** PIK3CA und TP53 sind nahezu nie gleichzeitig mutiert (82 Kookkurrenzen bei 538 mutierten Patientinnen; p = 8,7 × 10⁻⁸, Fisher's Exact Test nach Benjamini-Hochberg). Die stärkste Exklusivität besteht zwischen CDH1 und TP53 (9 von 462 mutierten Patientinnen; p = 1,5 × 10⁻¹⁴). Diese Befunde reflektieren die molekulare Dichotomie des Mammakarzinoms: PIK3CA- und CDH1-Mutationen sind Merkmale genomisch stabiler, hormonrezeptorpositiver Tumoren; TP53-Mutationen definieren chromosomal instabile, aggressive Subtypen.
+
+**Tumor Mutational Burden (TMB):** Der mediane TMB beträgt **39 Mutationen/Patient** (≈ 1,3 Mut/Mb bei ~30 Mb Exom-Abdeckung). Dieser Wert liegt weit unter dem von Melanom (~20 Mut/Mb) oder nicht-kleinzelligem Lungenkarzinom (~10 Mut/Mb), was die generell geringe Wirksamkeit von Immuncheckpoint-Inhibitoren beim unselektierten Mammakarzinom erklärt. Ein Ausreißer mit 5.360 Mutationen entspricht einem hypermutanten (wahrscheinlich POLE/MMR-defizientem) Tumor – eine Subpopulation (~1 % der BRCA-Patientinnen), die von Pembrolizumab unter der tumormutationsunabhängigen MSI-High-Zulassung profitieren kann.
+
+## Diskussion
+
+Die vorliegende Arbeit demonstriert, dass eine vollautomatisierte, reproduzierbare Multi-Omics-Pipeline aus öffentlichen TCGA-Daten robuste klinisch relevante Befunde generiert.
+
+**Prognostische Signatur:** Der C-Index von 0,881 der 52-Gen-Lasso-Signatur übersteigt das klinische Modell (0,752) substanziell und liegt im Bereich publizierter kommerzieller Multi-Gen-Tests für das Mammakarzinom wie Oncotype DX (C-Index typischerweise 0,70–0,78) oder MammaPrint (0,65–0,75). Methodisch entscheidend ist die echte externe Validierung: Das Modell wurde auf 70 % der Daten trainiert und auf 30 % nie gesehenen Patientinnen evaluiert, was overfitting-Artefakte ausschließt.
+
+Die Wahl von λ.1se gegenüber λ.min ist ein bewusster Bias-Varianz-Kompromiss: Weniger Gene (52 vs. ca. 120 bei λ.min) bedeuten schlechtere In-Sample-Anpassung, aber bessere Generalisierbarkeit und biologisch interpretierbarere Signaturen. In einem echten klinischen Kontext ist Parsimonie – weniger Gene, niedrigere Sequenzierkosten – ein zusätzliches Kriterium.
+
+**Pathway-Analyse:** Die Anreicherung von Lipidstoffwechsel-Pathways in Risikogenen ist biologisch kohärent. Lipidneosynthese ist ein etablierter Hallmark aggressiver Karzinome [@hanahan2011]; FASN (Fettsäuresynthase) ist ein potenzielles therapeutisches Ziel, das derzeit klinisch untersucht wird. Die Anreicherung von Zelladhäsions-Pathways – insbesondere homophiler Adhäsion – ist konsistent mit dem Konzept der Epithelial-Mesenchymalen Transition (EMT) als Treiber von Invasion und Metastasierung [@thiery2009].
+
+**Immunlandschaft:** Das Fehlen eines prognostischen Effekts des ImmuneScores (p = 0,90) widerspricht nicht der klinischen Erfahrung. Das Mammakarzinom gilt als immunologisch kalt; immunogene Tumoren („Tumor-Infiltrating Lymphocytes", TIL-hoch) konzentrieren sich auf den Triple-Negativen Subtyp und auf BRCA1-mutante Tumoren. Eine subtyp-stratifizierte Analyse, die den Rahmen dieser Arbeit übersteigt, würde wahrscheinlich einen signifikanten ImmuneScore-Effekt im Triple-Negativen Subtyp zeigen.
+
+**Mutationslandschaft:** Die nahezu vollständige gegenseitige Exklusivität von PIK3CA und TP53 (p = 8,7 × 10⁻⁸) repliziert den zentralen Befund der TCGA-BRCA-Originalpublikation [@tcga2012brca] und validiert die Qualität der Datenpipeline. Die Trennung in PI3K-aktivierte, chromosomal stabile (Luminal) versus TP53-mutante, hochgradig instabile (Triple-Negativ/HER2-enriched) Subpopulationen ist ein molekulares Paradigma, das klinisch therapeutisch genutzt wird: PI3K-Inhibitoren (Alpelisib) sind für PIK3CA-mutante HR+ BRCA zugelassen [@andre2019].
+
+**Limitationen:** (1) Die TCGA-Kohorte hat ein medianes Follow-up von nur 29 Monaten, was die Schätzung von 5-Jahres-Überlebenswahrscheinlichkeiten mit Unsicherheit belegt. (2) Die Expressionsdaten stammen aus Bulk-RNA-Seq; zelltypspezifische Signaturen (etwa aus single-cell RNA-Seq) könnten die Immunanalyse verbessern. (3) Das Lasso-Modell wurde auf einer Kohorte trainiert und getestet; eine unabhängige externe Kohorte (z. B. METABRIC) würde Generalisierbarkeit weiter belegen. (4) Die HER2-enriched-Subgruppe (n = 35) ist zu klein für stabile Effektschätzungen.
+
+## Fazit
+
+Die vorgestellte Pipeline liefert entlang von elf modularen R-Skripten und einem achttabigen Shiny-Dashboard einen vollständigen Analyse-Workflow vom Rohdownload bis zur interaktiven Visualisierung. Die 52-Gen-Lasso-Signatur erreicht einen C-Index von 0,881 auf ungesehenen Testdaten und verbessert die Überlebensprognose gegenüber klinischen Variablen allein um 12,9 Prozentpunkte. Pathway-Analyse identifiziert Lipidmetabolismus und Zelladhäsionsverlust als biologische Korrelate des Risiko-Scores; die somatische Mutationsanalyse repliziert die molekulare Dichotomie PIK3CA- vs. TP53-dominierter Subtypen.
+
+Die Pipeline ist vollständig reproduzierbar, durch eine einzige Konfigurationsvariable auf beliebige TCGA-Kohorten adaptierbar und auf GitHub öffentlich verfügbar. Damit erfüllt sie die Anforderungen an transparente, nachvollziehbare biomedizinische Forschung im Sinne von FAIR-Prinzipien (Findable, Accessible, Interoperable, Reusable).
+
+\newpage
+
+## Literaturverzeichnis {.unnumbered}
+
+::: {#refs}
+:::

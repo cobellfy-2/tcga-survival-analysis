@@ -50,8 +50,8 @@ mod_mutations_ui <- function(id) {
       # --- Mutation Landscape ---
       tabPanel("Mutation Landscape",
         br(),
-        div(style = "text-align:center; background:#f8f9fa; padding:10px; border-radius:6px;",
-          imageOutput(ns("freq_img"), height = "560px", width = "100%")
+        div(style = "text-align:center; background:#fff0f7; padding:12px; border-radius:14px;",
+          imageOutput(ns("freq_img"), height = "auto", width = "100%")
         ),
         br(),
         div(class = "alert alert-secondary",
@@ -83,8 +83,8 @@ mod_mutations_ui <- function(id) {
             letting you see whether certain mutation patterns are enriched in early vs. late stage.",
             style = "margin-bottom:0;")
         ),
-        div(style = "text-align:center; background:#f8f9fa; padding:10px; border-radius:6px;",
-          imageOutput(ns("onco_img"), height = "560px", width = "100%")
+        div(style = "text-align:center; background:#fff0f7; padding:12px; border-radius:14px;",
+          imageOutput(ns("onco_img"), height = "auto", width = "100%")
         )
       ),
       # --- Co-occurrence ---
@@ -94,33 +94,42 @@ mod_mutations_ui <- function(id) {
           h6("Co-occurrence and mutual exclusivity"),
           tags$ul(style = "margin-bottom:0",
             tags$li(strong("Co-occurrence (green):"),
-          " Two genes are mutated together more often than expected by chance — may indicate cooperating drivers.
-          Example: HMCN1 + TTN co-occur (OR = 4.6, p = 2.3×10⁻⁸), both likely passengers accumulating in
-          genetically unstable tumors rather than functional cooperators."),
-        tags$li(strong("Mutual exclusivity (red):"),
-          " Two genes are almost never mutated in the same patient. Top hits in BRCA:"),
-        tags$ul(
-          tags$li(strong("PIK3CA vs TP53:"), " only 82 co-occurrences out of 538 total (p = 8.7×10⁻⁸).
-            PIK3CA mutations drive Luminal A/B; TP53 mutations drive TNBC/HER2+. Different diseases."),
-          tags$li(strong("GATA3 vs TP53:"), " only 11 co-occurrences out of 456 (p = 1.5×10⁻¹²).
-            GATA3 is a luminal transcription factor — incompatible with the aggressive TP53-mutant phenotype."),
-          tags$li(strong("CDH1 vs TP53:"), " only 9 co-occurrences out of 462 (p = 1.5×10⁻¹⁴).
-            The strongest exclusivity signal: lobular BRCA (CDH1 loss) and basal BRCA (TP53 loss)
-            are essentially separate diseases at the molecular level.")
-        ),
-        tags$li(strong("* / ** / ***:"),
-          " Statistical significance (Fisher's exact test, Benjamini-Hochberg correction).")
+              " Two genes mutated together more often than expected by chance — may indicate cooperating drivers.
+              Example: HMCN1 + TTN co-occur (OR = 4.6, p = 2.3×10⁻⁸), both likely passengers accumulating
+              in genetically unstable tumors rather than functional cooperators."),
+            tags$li(strong("Mutual exclusivity (red):"),
+              " Two genes almost never mutated in the same patient — they define separate molecular diseases."),
+            tags$li(strong("* / ** / ***:"),
+              " Statistical significance (Fisher's exact test, Benjamini-Hochberg correction).")
           )
         ),
-        div(style = "text-align:center; background:#f8f9fa; padding:10px; border-radius:6px;",
-          imageOutput(ns("cooccur_img"), height = "560px", width = "100%")
+        div(class = "alert alert-light border",
+          h6("Strongest mutual-exclusivity pairs in this cohort"),
+          tags$table(class = "table table-sm",
+            tags$thead(tags$tr(
+              tags$th("Gene pair"), tags$th("Co-mutated"), tags$th("p-value"), tags$th("Meaning"))),
+            tags$tbody(
+              tags$tr(tags$td(strong("CDH1 vs TP53")),  tags$td("9 / 462"),
+                      tags$td("1.5×10⁻¹⁴"),
+                      tags$td("Lobular (CDH1 loss) vs basal (TP53 loss) — separate diseases")),
+              tags$tr(tags$td(strong("GATA3 vs TP53")), tags$td("11 / 456"),
+                      tags$td("1.5×10⁻¹²"),
+                      tags$td("Luminal TF incompatible with aggressive TP53-mutant phenotype")),
+              tags$tr(tags$td(strong("PIK3CA vs TP53")), tags$td("82 / 538"),
+                      tags$td("8.7×10⁻⁸"),
+                      tags$td("PIK3CA drives Luminal A/B; TP53 drives TNBC/HER2+"))
+            )
+          )
+        ),
+        div(style = "text-align:center; background:#fff0f7; padding:12px; border-radius:14px;",
+          imageOutput(ns("cooccur_img"), height = "auto", width = "100%")
         )
       ),
       # --- TMB ---
       tabPanel("Tumor Mutational Burden",
         br(),
-        div(style = "text-align:center; background:#f8f9fa; padding:10px; border-radius:6px;",
-          imageOutput(ns("tmb_img"), height = "460px", width = "100%")
+        div(style = "text-align:center; background:#fff0f7; padding:12px; border-radius:14px;",
+          imageOutput(ns("tmb_img"), height = "auto", width = "100%")
         ),
         br(),
         div(class = "alert alert-secondary",

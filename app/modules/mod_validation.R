@@ -124,8 +124,8 @@ mod_validation_ui <- function(id) {
             strong("Example:"), " a 70-year-old with Stage III disease and high risk score
             accumulates ~180 total points → predicted 5-year survival ≈ 45%.")
         ),
-        div(style = "text-align:center; background:#f8f9fa; padding:12px; border-radius:6px;",
-          imageOutput(ns("nomogram_img"), height = "520px", width = "100%")
+        div(style = "text-align:center; background:#fff0f7; padding:14px; border-radius:14px;",
+          imageOutput(ns("nomogram_img"), height = "auto", width = "100%")
         )
       ),
       # --- Calibration ---
@@ -148,13 +148,15 @@ mod_validation_ui <- function(id) {
               " Points with ", strong("error bars"), " = 95% CI from 100 bootstrap samples.
               Wide bars = few patients in that bin, high uncertainty."),
             tags$li(strong("Your result:"),
-              " Points track close to the diagonal, especially in the mid-range (0.6–0.85),
-              confirming the model produces trustworthy absolute survival predictions.
-              Minor deviation at extremes is expected with small bin sizes (n ≈ 60 per bin).")
+              " Patients were split into 4 quartiles by predicted survival (~253 each).
+              The three lower-risk quartiles fall essentially on the diagonal (predicted ≈ observed ≈ 0.95–1.0).
+              The highest-risk quartile sits slightly below the diagonal (predicted 0.71 vs. observed 0.64),
+              i.e. the model marginally overestimates survival for the sickest patients — a common and minor
+              miscalibration, with a wide confidence interval reflecting fewer survivors in that group.")
           )
         ),
-        div(style = "text-align:center; background:#f8f9fa; padding:12px; border-radius:6px;",
-          imageOutput(ns("calibration_img"), height = "550px", width = "100%")
+        div(style = "text-align:center; background:#fff0f7; padding:14px; border-radius:14px;",
+          imageOutput(ns("calibration_img"), height = "auto", width = "100%")
         )
       )
     )

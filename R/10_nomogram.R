@@ -101,41 +101,66 @@ png(file.path(FIGURES_DIR, "nomogram.png"),
     width = 1800, height = 900, res = 150)
 par(mar = c(2, 2, 4, 2), bg = "white")
 plot(nomo,
-     xfrac       = 0.32,
-     label.every = 1,
-     col.grid    = gray(c(0.88, 0.96)),
-     lplabel     = "Linear Predictor",
-     fun.side    = c(1, 3),
-     cex.axis    = 0.85,
-     cex.var     = 1.0,
-     col.conf    = c("#2196F3", "#F44336"),
-     main        = "Nomogram — Predicted 3-year & 5-year Overall Survival (TCGA-BRCA)",
-     cex.main    = 1.2)
+     xfrac    = 0.35,
+     cex.axis = 0.8,
+     cex.var  = 1.0,
+     lwd      = 2,
+     col.grid = gray(c(0.9, 0.97)))
+title(main = "Nomogram — Predicted 3-year & 5-year Overall Survival (TCGA-BRCA)",
+      cex.main = 1.2)
 dev.off()
 message("Saved: nomogram.png")
 
 # --- Calibration plot (3-year) ---
-# Compares predicted vs. observed survival
-png(file.path(FIGURES_DIR, "calibration_3yr.png"),
-    width = 1200, height = 900, res = 150)
-par(mar = c(5, 5, 5, 3), bg = "white", cex.lab = 1.2, cex.axis = 1.1)
-cal <- suppressWarnings(
-  calibrate(fit_nomo, cmethod = "KM", method = "boot",
-            u = 36, B = 100, cuts = 5)
-)
-plot(cal,
-     xlab  = "Predicted 3-year Survival Probability",
-     ylab  = "Observed 3-year Survival Probability (Kaplan-Meier)",
-     main  = "Calibration Plot — 3-year Overall Survival",
-     col   = "#2196F3",
-     lwd   = 2,
-     subtitles = FALSE)
-abline(0, 1, col = "#F44336", lty = 2, lwd = 2)
-legend("topleft",
-       legend = c("Calibration curve", "Ideal (perfect calibration)"),
-       col    = c("#2196F3", "#F44336"),
-       lty    = c(1, 2), lwd = 2, bty = "n", cex = 1.1)
-dev.off()
+# Custom calibration: group patients by predicted 3-year survival into quartiles,
+# then compare mean predicted vs. observed Kaplan-Meier survival per group.
+# This is far more robust than rms::calibrate for low-event cohorts like BRCA,
+# where predicted probabilities cluster near 1.0 and bootstrap binning collapses.
+df$lp_cal   <- predict(fit_nomo, type = "lp")
+df$pred_3yr <- surv_fn(36, df$lp_cal)
+
+# Quartile groups (drop duplicate breaks if predictions are tightly clustered)
+brks <- unique(quantile(df$pred_3yr, probs = seq(0, 1, 0.25), na.rm = TRUE))
+df$cal_grp <- cut(df$pred_3yr, breaks = brks, include.lowest = TRUE, labels = FALSE)
+
+cal_list <- lapply(sort(unique(df$cal_grp)), function(g) {
+  sub <- df[df$cal_grp == g & !is.na(df$cal_grp), ]
+  km  <- survfit(Surv(OS.time_m, OS) ~ 1, data = sub)
+  s36 <- summary(km, times = 36, extend = TRUE)
+  data.frame(
+    predicted = mean(sub$pred_3yr, na.rm = TRUE),
+    observed  = s36$surv,
+    lower     = s36$lower,
+    upper     = s36$upper,
+    n         = nrow(sub)
+  )
+})
+cal_df <- do.call(rbind, cal_list)
+
+rng <- range(c(cal_df$predicted, cal_df$lower, cal_df$upper), na.rm = TRUE)
+pad <- 0.03
+lim <- c(max(0, rng[1] - pad), min(1, rng[2] + pad))
+
+p_cal <- ggplot(cal_df, aes(x = predicted, y = observed)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+              color = "#ff4fa3", linewidth = 1) +
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                width = (lim[2] - lim[1]) * 0.02, color = "#b983ff", linewidth = 0.9) +
+  geom_line(color = "#ff85c0", linewidth = 1) +
+  geom_point(size = 4, color = "#ff4fa3") +
+  coord_cartesian(xlim = lim, ylim = lim) +
+  labs(
+    title    = paste0("Calibration Plot — 3-year Overall Survival (~",
+                      round(mean(cal_df$n)), " patients per quartile)"),
+    subtitle = "Pink dashed line = perfect calibration · error bars = 95% CI",
+    x = "Predicted 3-year Survival Probability",
+    y = "Observed 3-year Survival (Kaplan-Meier)"
+  ) +
+  theme_bw(base_size = 13) +
+  theme(plot.title = element_text(face = "bold", color = "#d6357f"))
+
+ggsave(file.path(FIGURES_DIR, "calibration_3yr.png"),
+       plot = p_cal, width = 8.5, height = 6, dpi = 150)
 message("Saved: calibration_3yr.png")
 
 saveRDS(list(fit = fit_nomo, nomo = nomo),
