@@ -37,10 +37,22 @@ An 8-tab dashboard lets you explore every result interactively:
 - **Mutations** — mutation landscape, OncoPrint, co-occurrence, TMB, KM by gene
 
 Every tab includes a method explanation box and interpretation of the specific results.
+The interface uses a custom Bootstrap 5 theme (Poppins/Quicksand typography, rounded
+cards, Font Awesome pictograms) so each method reads as a self-contained, explained story.
 
 ```r
 shiny::runApp("app")
 ```
+
+---
+
+## Academic write-up
+
+A full 10-page scientific report (in German) accompanies the code:
+**[`report/hausarbeit.pdf`](report/hausarbeit.pdf)** — abstract, introduction, methods,
+results, discussion, limitations and conclusion, with 19 peer-reviewed references.
+It is written in Quarto (`report/hausarbeit.qmd` + `report/references.bib`) and renders
+to PDF via `quarto render report/hausarbeit.qmd --to pdf`.
 
 ---
 
